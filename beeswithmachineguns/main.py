@@ -27,7 +27,7 @@ THE SOFTWARE.
 import bees
 import re
 import sys
-from optparse import OptionParser, OptionGroup
+import argparse
 
 NO_TRAILING_SLASH_REGEX = re.compile(r'^.*?\.\w+$')
 
@@ -36,90 +36,71 @@ def parse_options():
     Handle the command line arguments for spinning up bees
     """
     command = sys,
-    parser = OptionParser(usage="""
-bees COMMAND [options]
+    parser = argparse.ArgumentParser(add_help=True)
+    subparsers = parser.add_subparsers(help='commands', dest='command')
 
-Bees with Machine Guns
-
-A utility for arming (creating) many bees (small EC2 instances) to attack
-(load test) targets (web applications).
-
-commands:
-  up      Start a batch of load testing servers.
-  attack  Begin the attack on a specific url.
-  down    Shutdown and deactivate the load testing servers.
-  report  Report the status of the load testing servers.
-    """)
-
-    up_group = OptionGroup(parser, "up", 
-        """In order to spin up new servers you will need to specify at least the -k command, which is the name of the EC2 keypair to use for creating and connecting to the new servers. The bees will expect to find a .pem file with this name in ~/.ssh/.""")
+    up_parser = subparsers.add_parser('up')
+    attack_parser = subparsers.add_parser('attack')
+    down_parser = subparsers.add_parser('down')
+    report_parser = subparsers.add_parser('report')	
 
     # Required
-    up_group.add_option('-k', '--key',  metavar="KEY",  nargs=1,
-                        action='store', dest='key', type='string', 
-                        help="The ssh key pair name to use to connect to the new servers.")
-
-    up_group.add_option('-s', '--servers', metavar="SERVERS", nargs=1,
-                        action='store', dest='servers', type='int', default=5,
-                        help="The number of servers to start (default: 5).")
-    up_group.add_option('-g', '--group', metavar="GROUP", nargs=1,
-                        action='store', dest='group', type='string', default='default',
-                        help="The security group to run the instances under (default: default).")
-    up_group.add_option('-z', '--zone',  metavar="ZONE",  nargs=1,
-                        action='store', dest='zone', type='string', default='us-east-1d',
-                        help="The availability zone to start the instances in (default: us-east-1d).")
-    up_group.add_option('-i', '--instance',  metavar="INSTANCE",  nargs=1,
-                        action='store', dest='instance', type='string', default='ami-ff17fb96',
-                        help="The instance-id to use for each server from (default: ami-ff17fb96).")
-    up_group.add_option('-l', '--login',  metavar="LOGIN",  nargs=1,
-                        action='store', dest='login', type='string', default='newsapps',
+    up_parser.add_argument('-k', '--key', metavar="KEY", nargs=1,
+                        action='store', dest='key')
+    up_parser.add_argument('-s', '--servers', metavar="SERVERS", nargs=1,
+                        action='store', dest='servers', default=5)
+    up_parser.add_argument('-g', '--group', metavar="GROUP", nargs="*",
+                        action='store', dest='group', default='default')
+    up_parser.add_argument('-z', '--zone', metavar="ZONE", nargs=1,
+                        action='store', dest='zone', default='us-east-1d')
+    up_parser.add_argument('-i', '--instance', metavar="INSTANCE", nargs=1,
+                        action='store', dest='instance', default='ami-ff17fb96')
+    up_parser.add_argument('-l', '--login', metavar="LOGIN", nargs=1,
+                        action='store', dest='login', default='newsapps',
                         help="The ssh username name to use to connect to the new servers (default: newsapps).")
 
-    parser.add_option_group(up_group)
 
-    attack_group = OptionGroup(parser, "attack", 
-            """Beginning an attack requires only that you specify the -u option with the URL you wish to target.""")
-
+    #attack_group = parser.add_argument_group('attack')
     # Required
-    attack_group.add_option('-u', '--url', metavar="URL", nargs=1,
-                        action='store', dest='url', type='string',
-                        help="URL of the target to attack.")
+    attack_parser.add_argument('-u', '--url', metavar="URL", nargs=1,
+                        action='store', dest='url', help="URL of the target to attack.")
 
-    attack_group.add_option('-n', '--number', metavar="NUMBER", nargs=1,
-                        action='store', dest='number', type='int', default=1000,
+    attack_parser.add_argument('-n', '--number', metavar="NUMBER", nargs=1,
+                        action='store', dest='number', default=1000,
                         help="The number of total connections to make to the target (default: 1000).")
-    attack_group.add_option('-c', '--concurrent', metavar="CONCURRENT", nargs=1,
-                        action='store', dest='concurrent', type='int', default=100,
+    attack_parser.add_argument('-c', '--concurrent', metavar="CONCURRENT", nargs=1,
+                        action='store', dest='concurrent', default=100,
                         help="The number of concurrent connections to make to the target (default: 100).")
+    attack_parser.add_argument('-l', '--login', metavar="LOGIN", nargs=1,
+                        action='store', dest='login', default='attack')
+    
+    args = parser.parse_args()
 
-    parser.add_option_group(attack_group)
-
-    (options, args) = parser.parse_args()
-
-    if len(args) <= 0:
-        parser.error('Please enter a command.')
-
-    command = args[0]
-
-    if command == 'up':
-        if not options.key:
+    print args
+	
+    #command = args[0]
+    if args.command == 'up':
+        if not args.key:
             parser.error('To spin up new instances you need to specify a key-pair name with -k')
 
-        if options.group == 'default':
+        if args.group == 'default':
             print 'New bees will use the "default" EC2 security group. Please note that port 22 (SSH) is not normally open on this group. You will need to use to the EC2 tools to open it before you will be able to attack.'
-
-        bees.up(options.servers, options.group, options.zone, options.instance, options.login, options.key)
-    elif command == 'attack':
-        if not options.url:
+	print args
+        bees.up(args.servers[0],args.group,args.zone[0], args.instance, args.login, args.key[0])
+    elif args.command == 'attack':	
+	url = args.url[0]   
+	if not url:
             parser.error('To run an attack you need to specify a url with -u')
 
-        if NO_TRAILING_SLASH_REGEX.match(options.url):
+        if NO_TRAILING_SLASH_REGEX.match(url):
             parser.error('It appears your URL lacks a trailing slash, this will disorient the bees. Please try again with a trailing slash.')
-
-        bees.attack(options.url, options.number, options.concurrent)
-    elif command == 'down':
+	number = args.number
+		
+	concurrent = args.concurrent      
+	bees.attack(url,int(number[0]),int(concurrent[0]))
+    elif args.command  == 'down':
         bees.down()
-    elif command == 'report':
+    elif args.command == 'report':
         bees.report()
 
 
