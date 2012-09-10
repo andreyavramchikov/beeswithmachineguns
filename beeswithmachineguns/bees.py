@@ -93,6 +93,11 @@ def up(count, group, zone, image_id, username, key_name):
 
     print 'Attempting to call up %i bees.' % count
     print group
+    version = str(sys.version_info[0]) + "." + str(sys.version_info[1])
+    
+    if float(version) < 2.7:
+	group = group.split(',')
+	
     reservation = ec2_connection.run_instances(
         image_id=image_id,
         min_count=count,
