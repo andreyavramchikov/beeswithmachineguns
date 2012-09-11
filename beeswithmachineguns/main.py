@@ -30,27 +30,33 @@ import sys
 from optparse import OptionParser, OptionGroup
 
 NO_TRAILING_SLASH_REGEX = re.compile(r'^.*?\.\w+$')
-
+PYTHON_VERSION = "%s.%s" % (sys.version_info[0], sys.version_info[1]) 
 def parse_options():
     
     """
     Handle the command line arguments for spinning up bees
     """     
-    version = str(sys.version_info[0]) + "." + str(sys.version_info[1])
-    float(version)
-    s_kwargs = {'metavar' : "SERVERS",'nargs' : 1,'action' : 'store','dest' : 'servers','default':5}
-    k_kwargs = {'metavar' : "KEY",'nargs' : 1,'action' : 'store','dest' : 'key'}
-    g_kwargs = {'metavar' : "GROUP",'nargs' : '*','action' : 'store','dest' : 'group','default' : 'default'}    
-    gg_kwargs = {'metavar' : "GROUP",'nargs' : 1,'action' : 'store','dest' : 'group','default' : 'default'}    
-    z_kwargs = {'metavar' : "ZONE",'nargs' : 1,'action' : 'store','dest' : 'zone','default' : 'us-east-1d'}
-    i_kwargs = {'metavar' : "INSTANCE",'nargs' : 1,'action' : 'store','dest' : 'instance','default' : 'ami-ff17fb96'}
-    l_kwargs = {'metavar' : "LOGIN",'nargs' : 1,'action' : 'store','dest' : 'login','default' : 'newsapps'} 
-    u_kwargs = {'metavar' : "URL",'nargs' : 1,'action' : 'store','dest' : 'url'} 
-    n_kwargs = {'metavar' : "NUMBER",'nargs' : 1,'action' : 'store','dest' : 'number','default' : 1000}
-    c_kwargs = {'metavar' : "CONCURRENT",'nargs' : 1,'action' : 'store','dest' : 'concurrent','default' : 100} 
+    opts_servers = {'metavar' : "SERVERS",'nargs' : 1,'action' : 'store','dest' : 'servers','default':5}
+    opts_key = {'metavar' : "KEY",'nargs' : 1,'action' : 'store','dest' : 'key'}
+    opts_groups = {'metavar' : "GROUP",'nargs' : '*' if PYTHON_VERSION >= '2.7' else 1,'action' : 'store','dest' : 'group','default' : 'default'}    
+    opts_zone = {'metavar' : "ZONE",'nargs' : 1,'action' : 'store','dest' : 'zone','default' : 'us-east-1d'}
+    opts_instance = {'metavar' : "INSTANCE",'nargs' : 1,'action' : 'store','dest' : 'instance','default' : 'ami-ff17fb96'}
+    opts_login = {'metavar' : "LOGIN",'nargs' : 1,'action' : 'store','dest' : 'login','default' : 'newsapps'} 
+    opts_url = {'metavar' : "URL",'nargs' : 1,'action' : 'store','dest' : 'url'} 
+    opts_number = {'metavar' : "NUMBER",'nargs' : 1,'action' : 'store','dest' : 'number','default' : 1000}
+    opts_concurrent = {'metavar' : "CONCURRENT",'nargs' : 1,'action' : 'store','dest' : 'concurrent','default' : 100} 
+    key_args = ['-k','--key']
+    servers_args = ['-s','--servers']
+    groups_args = ['-g', '--group']
+    zone_args = ['-z', '--zone']
+    instance_args = ['-i', '--instance'] 
+    login_args = ['-l', '--login']
+    url_args = ['-u', '--url']
+    number_args = ['-n', '--number']
+    concurrent_args = ['-c', '--concurrent']
     
-    if float(version) >= 2.7:
-	import argparse
+    if PYTHON_VERSION >= "2.7":
+        import argparse       
         parser = argparse.ArgumentParser(add_help=True)
         
         subparsers = parser.add_subparsers(help='commands', dest='command')
@@ -60,24 +66,22 @@ def parse_options():
         report_parser = subparsers.add_parser('report')    
         
         # Required
-        up_parser.add_argument('-k', '--key', **k_kwargs)
-        up_parser.add_argument('-s','--servers', **s_kwargs)
-        up_parser.add_argument('-g', '--group', **g_kwargs)
-        up_parser.add_argument('-z', '--zone',**z_kwargs)
-        up_parser.add_argument('-i', '--instance', **i_kwargs)
-        up_parser.add_argument('-l', '--login', **l_kwargs)
+        up_parser.add_argument(*key_args, **opts_key)
+        up_parser.add_argument(*servers_args, **opts_servers)
+        up_parser.add_argument(*groups_args, **opts_groups)
+        up_parser.add_argument(*zone_args,**opts_zone)
+        up_parser.add_argument(*instance_args, **opts_instance)
+        up_parser.add_argument(*login_args, **opts_login)
         
-        #attack_group = parser.add_argument_group('attack')
         # Required
-        attack_parser.add_argument('-u', '--url', **u_kwargs)
-        attack_parser.add_argument('-n', '--number', **n_kwargs)
-        attack_parser.add_argument('-c', '--concurrent', **c_kwargs)
+        attack_parser.add_argument(*url_args, **opts_url)
+        attack_parser.add_argument(*number_args, **opts_number)
+        attack_parser.add_argument(*concurrent_args, **opts_concurrent)
     
-        options = parser.parse_args()
-
+        command, options = parse_opt(parser.parse_args())
     else:
         #if version less than 2.7      
-	parser = OptionParser(usage="""
+        parser = OptionParser(usage="""
             bees COMMAND [options]
             Bees with Machine Guns
             A utility for arming (creating) many bees (small EC2 instances) to attack
@@ -93,13 +97,13 @@ def parse_options():
         up_group = OptionGroup(parser, "up", 
         """In order to spin up new servers you will need to specify at least the -k command, which is the name of the EC2 keypair to use for creating and connecting to the new servers. The bees will expect to find a .pem file with this name in ~/.ssh/.""")
         
-	# Required
-        up_group.add_option('-k', '--key', **k_kwargs)
-        up_group.add_option('-s', '--servers', **s_kwargs)
-        up_group.add_option('-g', '--group', **gg_kwargs)
-        up_group.add_option('-z', '--zone',  **z_kwargs)
-        up_group.add_option('-i', '--instance', **i_kwargs)
-        up_group.add_option('-l', '--login',  **l_kwargs)
+    # Required
+        up_group.add_option(*key_args, **opts_key)
+        up_group.add_option(*servers_args, **opts_servers)
+        up_group.add_option(*groups_args, **opts_groups)
+        up_group.add_option(*zone_args,  **opts_zone)
+        up_group.add_option(*instance_args, **opts_instance)
+        up_group.add_option(*login_args,  **opts_login)
 
         parser.add_option_group(up_group)
 
@@ -107,31 +111,15 @@ def parse_options():
             """Beginning an attack requires only that you specify the -u option with the URL you wish to target.""")
 
         # Required
-        attack_group.add_option('-u', '--url', **u_kwargs)
-
-        attack_group.add_option('-n', '--number', **n_kwargs)
-        attack_group.add_option('-c', '--concurrent', **c_kwargs)
+        attack_group.add_option(*url_args, **opts_url)
+        attack_group.add_option(*number_args, **opts_number)
+        attack_group.add_option(*concurrent_args, **opts_concurrent)
 
         parser.add_option_group(attack_group)
 
-        (options, args) = parser.parse_args()
+        command, options = parse_opt(parser.parse_args())
+        
     
-    
-    if float(version) >=2.7:
-	command = options.command
-        if command == "up":
-            options.key = options.key[0]
-            options.zone = options.zone[0]
-            options.servers = options.servers[0]
-        elif command == "attack":
-            options.url = options.url[0]
-            options.number = options.number[0]
-            options.concurrent = options.concurrent[0]
-            
-    else: 
-        command = args[0]
-          
-        #command = args[0]
     if command == 'up':
         if not options.key:
             parser.error('To spin up new instances you need to specify a key-pair name with -k')
@@ -155,3 +143,29 @@ def parse_options():
     
 def main():
     parse_options()
+
+def parse_opt(params):
+    if PYTHON_VERSION >= "2.7":
+        options = params
+        command = options.command
+        if command == "up":
+            options.key = options.key[0]
+            options.zone = options.zone[0]
+            options.servers = options.servers[0]
+        elif command == "attack":
+            options.url = options.url[0]
+            options.number = options.number[0]
+            options.concurrent = options.concurrent[0] 
+    else:
+        options = params[0]
+        command = params[1][0]
+        if command == "up":
+            options.group = get_groups(options.group)
+        
+    
+    return command, options
+            
+                
+def get_groups (group_str):
+    return [group.strip() for group in group_str.split(',')]
+    

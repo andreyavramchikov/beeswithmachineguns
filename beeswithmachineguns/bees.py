@@ -69,7 +69,7 @@ def _get_pem_path(key):
 
 # Methods
 
-def up(count, group, zone, image_id, username, key_name):
+def up(count, groups, zone, image_id, username, key_name):
     """
     Startup the load testing server.
     """
@@ -92,18 +92,13 @@ def up(count, group, zone, image_id, username, key_name):
     ec2_connection = boto.connect_ec2()
 
     print 'Attempting to call up %i bees.' % count
-    print group
-    version = str(sys.version_info[0]) + "." + str(sys.version_info[1])
     
-    if float(version) < 2.7:
-	group = group.split(',')
-	
     reservation = ec2_connection.run_instances(
         image_id=image_id,
         min_count=count,
         max_count=count,
         key_name=key_name,
-	security_groups=group,
+	    security_groups=groups,
         instance_type=EC2_INSTANCE_TYPE,
         placement=zone)
 
