@@ -31,29 +31,59 @@ from optparse import OptionParser, OptionGroup
 
 NO_TRAILING_SLASH_REGEX = re.compile(r'^.*?\.\w+$')
 PYTHON_VERSION = "%s.%s" % (sys.version_info[0], sys.version_info[1]) 
+
 def parse_options():
     
     """
     Handle the command line arguments for spinning up bees
     """     
-    opts_servers = {'metavar' : "SERVERS",'nargs' : 1,'action' : 'store','dest' : 'servers','default':5}
-    opts_key = {'metavar' : "KEY",'nargs' : 1,'action' : 'store','dest' : 'key'}
-    opts_groups = {'metavar' : "GROUP",'nargs' : '*' if PYTHON_VERSION >= '2.7' else 1,'action' : 'store','dest' : 'group','default' : 'default'}    
-    opts_zone = {'metavar' : "ZONE",'nargs' : 1,'action' : 'store','dest' : 'zone','default' : 'us-east-1d'}
-    opts_instance = {'metavar' : "INSTANCE",'nargs' : 1,'action' : 'store','dest' : 'instance','default' : 'ami-ff17fb96'}
-    opts_login = {'metavar' : "LOGIN",'nargs' : 1,'action' : 'store','dest' : 'login','default' : 'newsapps'} 
-    opts_url = {'metavar' : "URL",'nargs' : 1,'action' : 'store','dest' : 'url'} 
-    opts_number = {'metavar' : "NUMBER",'nargs' : 1,'action' : 'store','dest' : 'number','default' : 1000}
-    opts_concurrent = {'metavar' : "CONCURRENT",'nargs' : 1,'action' : 'store','dest' : 'concurrent','default' : 100} 
-    key_args = ['-k','--key']
-    servers_args = ['-s','--servers']
-    groups_args = ['-g', '--group']
-    zone_args = ['-z', '--zone']
-    instance_args = ['-i', '--instance'] 
-    login_args = ['-l', '--login']
-    url_args = ['-u', '--url']
-    number_args = ['-n', '--number']
-    concurrent_args = ['-c', '--concurrent']
+
+    config_options_up = (
+             (('-k','--key'),      {'metavar' : "KEY",
+                                    'nargs' : 1,
+                                    'action' : 'store',
+                                    'dest' : 'key'}),
+             (('-s','--servers'),  {'metavar' : "SERVERS",
+                                    'nargs' : 1,
+                                    'action' : 'store',
+                                    'dest' : 'servers',
+                                    'default':5}),
+             (('-g', '--group'),   {'metavar' : "GROUP",
+                                    'nargs' : '*' if PYTHON_VERSION >= '2.7' else 1,
+                                    'action' : 'store',
+                                    'dest' : 'group',
+                                    'default' : 'default'}),
+             (('-z', '--zone'),    {'metavar' : "ZONE",
+                                    'nargs' : 1,
+                                    'action' : 'store',
+                                    'dest' : 'zone',
+                                    'default' : 'us-east-1d'}),
+             (('-i', '--instance'),{'metavar' : "INSTANCE",
+                                    'nargs' : 1,
+                                    'action' : 'store',
+                                    'dest' : 'instance',
+                                    'default' : 'ami-ff17fb96'}),
+             (('-l', '--login'),   {'metavar' : "LOGIN",
+                                    'nargs' : 1,
+                                    'action' : 'store',
+                                    'dest' : 'login',
+                                    'default' : 'newsapps'}))
+    
+    config_options_attack = [
+            (('-u', '--url'),        {'metavar' : "URL",
+                                      'nargs' : 1,
+                                      'action' : 'store',
+                                      'dest' : 'url'}),
+             (('-n', '--number'),    {'metavar' : "NUMBER",
+                                      'nargs' : 1,
+                                      'action' : 'store',
+                                      'dest' : 'number',
+                                      'default' : 1000}),
+             (('-c', '--concurrent'),{'metavar' : "CONCURRENT",
+                                      'nargs' : 1,
+                                      'action' : 'store',
+                                      'dest' : 'concurrent',
+                                      'default' : 100})]
     
     if PYTHON_VERSION >= "2.7":
         import argparse       
@@ -64,20 +94,11 @@ def parse_options():
         attack_parser = subparsers.add_parser('attack')
         down_parser = subparsers.add_parser('down')
         report_parser = subparsers.add_parser('report')    
+
+        [up_parser.add_argument(*config_up[0],**config_up[1]) for config_up in config_options_up]
         
-        # Required
-        up_parser.add_argument(*key_args, **opts_key)
-        up_parser.add_argument(*servers_args, **opts_servers)
-        up_parser.add_argument(*groups_args, **opts_groups)
-        up_parser.add_argument(*zone_args,**opts_zone)
-        up_parser.add_argument(*instance_args, **opts_instance)
-        up_parser.add_argument(*login_args, **opts_login)
+        [attack_parser.add_argument(*config_attack[0],**config_attack[1]) for config_attack in config_options_attack]   
         
-        # Required
-        attack_parser.add_argument(*url_args, **opts_url)
-        attack_parser.add_argument(*number_args, **opts_number)
-        attack_parser.add_argument(*concurrent_args, **opts_concurrent)
-    
         command, options = parse_opt(parser.parse_args())
     else:
         #if version less than 2.7      
@@ -97,24 +118,17 @@ def parse_options():
         up_group = OptionGroup(parser, "up", 
         """In order to spin up new servers you will need to specify at least the -k command, which is the name of the EC2 keypair to use for creating and connecting to the new servers. The bees will expect to find a .pem file with this name in ~/.ssh/.""")
         
-    # Required
-        up_group.add_option(*key_args, **opts_key)
-        up_group.add_option(*servers_args, **opts_servers)
-        up_group.add_option(*groups_args, **opts_groups)
-        up_group.add_option(*zone_args,  **opts_zone)
-        up_group.add_option(*instance_args, **opts_instance)
-        up_group.add_option(*login_args,  **opts_login)
+        #up_parser.add_argument([(*config_up[0],**config_up[1]) for config_up in config_options_up])
+        
+        [parser.add_option(*config_up[0],**config_up[1]) for config_up in config_options_up]
 
         parser.add_option_group(up_group)
 
         attack_group = OptionGroup(parser, "attack", 
             """Beginning an attack requires only that you specify the -u option with the URL you wish to target.""")
 
-        # Required
-        attack_group.add_option(*url_args, **opts_url)
-        attack_group.add_option(*number_args, **opts_number)
-        attack_group.add_option(*concurrent_args, **opts_concurrent)
-
+        [parser.add_option(*config_attack[0],**config_attack[1]) for config_attack in config_options_attack]
+        
         parser.add_option_group(attack_group)
 
         command, options = parse_opt(parser.parse_args())
@@ -140,9 +154,6 @@ def parse_options():
     elif command == 'report':
         bees.report()
           
-    
-def main():
-    parse_options()
 
 def parse_opt(params):
     if PYTHON_VERSION >= "2.7":
@@ -168,4 +179,7 @@ def parse_opt(params):
                 
 def get_groups (group_str):
     return [group.strip() for group in group_str.split(',')]
+
+def main():
+    parse_options()
     
