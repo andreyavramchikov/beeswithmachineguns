@@ -37,53 +37,61 @@ def parse_options():
     """
     Handle the command line arguments for spinning up bees
     """     
-
     config_options_up = (
              (('-k','--key'),      {'metavar' : "KEY",
                                     'nargs' : 1,
                                     'action' : 'store',
-                                    'dest' : 'key'}),
+                                    'dest' : 'key',
+                                    'help' : 'The ssh key pair name to use to connect to the new servers.'}),
              (('-s','--servers'),  {'metavar' : "SERVERS",
                                     'nargs' : 1,
                                     'action' : 'store',
                                     'dest' : 'servers',
-                                    'default':5}),
+                                    'default':5,
+                                    'help' :'The number of servers to start (default: 5).'}),
              (('-g', '--group'),   {'metavar' : "GROUP",
                                     'nargs' : '*' if PYTHON_VERSION >= '2.7' else 1,
                                     'action' : 'store',
                                     'dest' : 'group',
-                                    'default' : 'default'}),
+                                    'default' : 'default',
+                                    'help' : 'The security group to run the instances under (default: default).'}),
              (('-z', '--zone'),    {'metavar' : "ZONE",
                                     'nargs' : 1,
                                     'action' : 'store',
                                     'dest' : 'zone',
-                                    'default' : 'us-east-1d'}),
+                                    'default' : 'us-east-1d',
+                                    'help' : 'The availability zone to start the instances in (default: us-east-1d).'}),
              (('-i', '--instance'),{'metavar' : "INSTANCE",
                                     'nargs' : 1,
                                     'action' : 'store',
                                     'dest' : 'instance',
-                                    'default' : 'ami-ff17fb96'}),
+                                    'default' : 'ami-ff17fb96',
+                                    'help' :'The instance-id to use for each server from (default: ami-ff17fb96).'}),
              (('-l', '--login'),   {'metavar' : "LOGIN",
                                     'nargs' : 1,
                                     'action' : 'store',
                                     'dest' : 'login',
-                                    'default' : 'newsapps'}))
+                                    'default' : 'newsapps',
+                                    'help' : 'The ssh username name to use to connect to the new servers (default: newsapps).'}))
     
     config_options_attack = [
             (('-u', '--url'),        {'metavar' : "URL",
                                       'nargs' : 1,
                                       'action' : 'store',
-                                      'dest' : 'url'}),
+                                      'dest' : 'url',
+                                      'help' : 'URL of the target to attack.'}),
              (('-n', '--number'),    {'metavar' : "NUMBER",
                                       'nargs' : 1,
                                       'action' : 'store',
                                       'dest' : 'number',
-                                      'default' : 1000}),
+                                      'default' : 1000,
+                                      'help' : 'The number of total connections to make to the target (default: 1000).'}),
              (('-c', '--concurrent'),{'metavar' : "CONCURRENT",
                                       'nargs' : 1,
                                       'action' : 'store',
                                       'dest' : 'concurrent',
-                                      'default' : 100})]
+                                      'default' : 100,
+                                      'help' : 'The number of concurrent connections to make to the target (default: 100).'})]
     
     if PYTHON_VERSION >= "2.7":
         import argparse       
