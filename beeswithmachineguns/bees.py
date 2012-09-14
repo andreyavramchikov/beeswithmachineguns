@@ -53,6 +53,7 @@ def _read_server_list():
         instance_ids = text.split('\n')
 
         print 'Read %i bees from the roster.' % len(instance_ids)
+
     return (username, key_name, instance_ids)
 
 def _write_server_list(username, key_name, instances):
@@ -69,7 +70,7 @@ def _get_pem_path(key):
 
 # Methods
 
-def up(count, groups, zone, image_id, username, key_name):
+def up(count, group, zone, image_id, username, key_name):
     """
     Startup the load testing server.
     """
@@ -92,13 +93,13 @@ def up(count, groups, zone, image_id, username, key_name):
     ec2_connection = boto.connect_ec2()
 
     print 'Attempting to call up %i bees.' % count
-    
+
     reservation = ec2_connection.run_instances(
         image_id=image_id,
         min_count=count,
         max_count=count,
         key_name=key_name,
-	    security_groups=groups,
+        security_groups=group,
         instance_type=EC2_INSTANCE_TYPE,
         placement=zone)
 
@@ -170,7 +171,7 @@ def down():
 def _attack(params):
     """
     Test the target URL with requests.
-
+    
     Intended for use with multiprocessing.
     """
     print 'Bee %i is joining the swarm.' % params['i']
@@ -184,21 +185,12 @@ def _attack(params):
             key_filename=_get_pem_path(params['key_name']))
 
         print 'Bee %i is firing his machine gun. Bang bang!' % params['i']
-	
-        stdin, stdout, stderr = client.exec_command('ab -r -n %(num_requests)s -c %(concurrent_requests)s -C "sessionid=NotARealSessionID" %(url)s' % params)
-        #stdin, stdout, stderr = client.exec_command('siege -b -r %(num_requests)s -c %(concurrent_requests)s -C "sessionid=NotARealSessionID" %(url)s' % params)
-        response = {}
-	
-        ab_results = stdout.read()
-        print "----------------------------------------------------- R E S U L T S   %s   B E E ------------------------------------------------"  % params['i']
-        print ab_results	
 
-#	for i, line in enumerate(ab_results):
-#	    line = line.rstrip()
-#	    print "%d: %s" % (i, line)
-#	    if i >= 50:
-#		break
-        
+        stdin, stdout, stderr = client.exec_command('ab -r -n %(num_requests)s -c %(concurrent_requests)s -C "sessionid=NotARealSessionID" "%(url)s"' % params)
+
+        response = {}
+
+        ab_results = stdout.read()
         ms_per_request_search = re.search('Time\ per\ request:\s+([0-9.]+)\ \[ms\]\ \(mean\)', ab_results)
 
         if not ms_per_request_search:
@@ -209,18 +201,12 @@ def _attack(params):
         fifty_percent_search = re.search('\s+50\%\s+([0-9]+)', ab_results)
         ninety_percent_search = re.search('\s+90\%\s+([0-9]+)', ab_results)
         complete_requests_search = re.search('Complete\ requests:\s+([0-9]+)', ab_results)
-        failed_requests_search = re.search('Failed\ requests:\s+([0-9]+)', ab_results) 
-        failed_length = re.search('\s+\(Connect:\s+[0-9]+,\s+Receive:\s+[0-9]+,\s+Length:\s+([0-9]+),\s+Exceptions:\s+[0-9]+\)', ab_results)
-        #print 'failed_length = %s' % int(failed_length.group(1))
-		#   (Connect: 0, Receive: 0, Length: 14, Exceptions: 0)
 
         response['ms_per_request'] = float(ms_per_request_search.group(1))
         response['requests_per_second'] = float(requests_per_second_search.group(1))
         response['fifty_percent'] = float(fifty_percent_search.group(1))
         response['ninety_percent'] = float(ninety_percent_search.group(1))
         response['complete_requests'] = float(complete_requests_search.group(1))
-        response['failed_requests'] = float(failed_requests_search.group(1))
-        response['failed_length'] = float(failed_length.group(1))
 
         print 'Bee %i is out of ammo.' % params['i']
 
@@ -228,7 +214,6 @@ def _attack(params):
 
         return response
     except socket.error, e:
-        print e
         return e
 
 
@@ -257,18 +242,6 @@ def _print_results(results):
     complete_results = [r['complete_requests'] for r in complete_bees]
     total_complete_requests = sum(complete_results)
     print '     Complete requests:\t\t%i' % total_complete_requests
-
-
-    complete_results = [r['failed_length'] for r in complete_bees]
-    total_failed_length = sum(complete_results)
-    #print '     Failed length requests:\t\t%i' % total_failed_length
-
-
-    complete_results = [r['failed_requests'] for r in complete_bees]
-    total_failed_requests = sum(complete_results)
-    print '     Failed requests:\t\t%i' % (total_failed_requests - total_failed_length)
-
-
 
     complete_results = [r['requests_per_second'] for r in complete_bees]
     mean_requests = sum(complete_results)
@@ -340,6 +313,9 @@ def attack(url, n, c):
             'key_name': key_name,
         })
 
+    print 'Stinging URL so it will be cached for the attack.'
+
+    # Ping url so it will be cached for testing
     urllib2.urlopen(url)
 
     print 'Organizing the swarm.'
@@ -348,9 +324,8 @@ def attack(url, n, c):
     pool = Pool(len(params))
     results = pool.map(_attack, params)
 
-    print "---------------------------------------------------------------------------------------------------------------------------------" 
     print 'Offensive complete.'
-    
+
     _print_results(results)
 
     print 'The swarm is awaiting new orders.'
